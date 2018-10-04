@@ -104,7 +104,7 @@ dump sentimentbycounntry;
 
 
 
-#save the result in a file
+#save the result in a file and use
 store sentimentbycountry into '/home/hadoop/Desktop/result';
 
 
