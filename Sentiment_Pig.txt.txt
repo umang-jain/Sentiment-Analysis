@@ -1,0 +1,121 @@
+tweets = load 'sentiment/tweetsp' using PigStorage('/t') as (id:long,timestamp:chararray,tweet_count:int,text:chararray,screen_name:chararray,followers_count:chararray,time_zone:chararray);
+
+
+dump tweets;
+
+
+
+dictionary = load 'sentiment/dictionary.tsv' using PigStorage('\t') as (type:chararray,length:int,word:chararray,pos:chararray,stemmed:chararray,polarity:chararray);
+
+
+dump dictionary;
+
+
+
+timezonemap = load 'sentiment/time_zone_map.tsv' using PigStorage('\t') as (time_zone:chararray,country:chararray,notes:chararray);
+
+
+dump timezonemap
+
+;
+
+twords = foreach tweets generate id,FLATTEN(TOKENIZE(text)) as words;
+
+
+dump twords;
+
+
+
+tsentiment = join twords by word left outer,dictionary by word using 'replicated';
+
+
+dump tsentiment;
+
+wscore = FOREACH tsentiment generate twords::id as id, (CASE dictionary::polarity WHEN 'positive' THEN 1 WHEN 'negative' THEN -1 else 0 END) as score;
+
+
+dump wscore;
+
+
+
+tgroup = group wscore by id;
+
+
+dump tgroup;
+
+
+
+tscore = foreach tgroup generate group as id, SUM(wscore.score) as final;
+
+
+dump tscore;
+
+
+
+tweetstz = join tweets by time_zone left outer, timezonemap by time_zone using 'replicated';
+
+
+dump tweetstz;
+
+
+
+#generate data with tweets id and time zone as country
+
+tcountry = foreach tweetstz generate tweets::id as id, timezonemap::country as country;
+
+
+dump tcountry;
+
+
+
+#each tweet is mapped with country
+
+tcomplete = join tscore by id left outer , tcountry by id;
+
+
+dump tcomplete;
+
+
+
+#classify each tweet as either positive or negative
+
+tclassify = foreach tcomplete generate tscore::id as id, tcountry::country as country, ((tscore::final>0)?1:0) as positive, ((tscore::final<0)?1:0) as negative;
+
+
+dump tclassify;
+
+
+
+#group by the tweets by country
+
+groupbycountries = group tclassify by country ;
+
+
+dump groupbycountries;
+
+
+
+#find out how many positives and negative tweets per each country
+
+sentimentbycountry = foreach groupbycountries generate group, SUM(tclassify.positive),SUM(tclassify.negative);
+
+
+dump sentimentbycounntry;
+
+
+
+#save the result in a file
+store sentimentbycountry into '/home/hadoop/Desktop/result';
+
+
+
+
+
+
+
+
+
+
+
+
+
