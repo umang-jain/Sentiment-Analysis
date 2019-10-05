@@ -66,3 +66,6 @@ dump sentimentbycounntry;
 
 #save the result in a file and use
 store sentimentbycountry into '/home/hadoop/Desktop/result';
+
+#This completes the sentiment analysis project
+
